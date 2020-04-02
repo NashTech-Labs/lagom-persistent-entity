@@ -30,6 +30,6 @@ lazy val `lagom-persistent-entity-impl` = (project in file("lagom-persistent-ent
   .settings(lagomForkedTestSettings)
   .dependsOn(`lagom-persistent-entity-api`)
 
-//lagomCassandraEnabled in ThisBuild := false
-//lagomUnmanagedServices in ThisBuild := Map("cas_native" -> "http://localhost:9042")
+lagomCassandraEnabled in ThisBuild := false
+lagomUnmanagedServices in ThisBuild := Map("cas_native" -> "http://localhost:9042")
 lagomKafkaEnabled in ThisBuild := false

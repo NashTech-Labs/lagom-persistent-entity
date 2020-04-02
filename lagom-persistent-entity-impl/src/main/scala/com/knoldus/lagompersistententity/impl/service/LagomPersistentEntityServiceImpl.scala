@@ -3,12 +3,11 @@ package com.knoldus.lagompersistententity.impl.service
 import akka.util.Timeout
 import akka.{Done, NotUsed}
 import com.knoldus.lagompersistententity.api.{LagomPersistentEntityService, Product}
-import com.knoldus.lagompersistententity.impl.eventSourcing.{
-  AddProductCommand, GetProductCommand
-  , InventoryCommand, InventoryEntity
-}
+import com.knoldus.lagompersistententity.impl.eventSourcing.{AddProductCommand, InventoryCommand, InventoryEntity}
 import com.lightbend.lagom.scaladsl.api.ServiceCall
+import com.lightbend.lagom.scaladsl.persistence.cassandra.CassandraSession
 import com.lightbend.lagom.scaladsl.persistence.{PersistentEntityRef, PersistentEntityRegistry}
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -16,11 +15,12 @@ import scala.concurrent.duration._
 /**
  * Implementation of the LagomPersistentEntityService.
  */
-class LagomPersistentEntityServiceImpl(persistentEntityRegistry: PersistentEntityRegistry)
+class LagomPersistentEntityServiceImpl(persistentEntityRegistry: PersistentEntityRegistry,session: CassandraSession)
                                       (implicit ec: ExecutionContext) extends LagomPersistentEntityService {
 
   implicit val timeout: Timeout = Timeout(5.seconds)
-
+  val config: Config = ConfigFactory.load()
+  val TABLE_NAME: String = config.getString("cassandra.tableName")
   /**
    * Looks up the entity for the given ID.
    */
@@ -40,9 +40,15 @@ class LagomPersistentEntityServiceImpl(persistentEntityRegistry: PersistentEntit
 
   override def getProduct(id: String): ServiceCall[NotUsed, String] = {
     ServiceCall { _ =>
-      ref(id).ask(GetProductCommand(id)).map(product =>
-        s"Product corresponding to id:$id is ${product.name}")
+      session.selectOne(s"SELECT * FROM $TABLE_NAME WHERE name = '$id'").map{rows =>
+        rows.map{row =>
+          val id = row.getString("id")
+          val name = row.getString("name")
+          val age = row.getLong("quantity")
+          Product(id, name, age)
+        }.map(product =>  s"Product named ${product.name} has id: $id and quantity in inventory: ${product.quantity}")
     }
   }
 
+}
 }

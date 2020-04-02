@@ -1,7 +1,7 @@
 package com.knoldus.lagompersistententity.impl.service
 
 import com.knoldus.lagompersistententity.api.LagomPersistentEntityService
-import com.knoldus.lagompersistententity.impl.eventSourcing.InventoryEntity
+import com.knoldus.lagompersistententity.impl.eventSourcing.{InventoryEntity, InventoryReadSideProcessor}
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
 import com.lightbend.lagom.scaladsl.api.{Descriptor, ServiceLocator}
 import com.lightbend.lagom.scaladsl.devmode.LagomDevModeComponents
@@ -34,6 +34,9 @@ abstract class LagomPersistentEntityApplication(context: LagomApplicationContext
 
   // Register the JSON serializer registry
   override lazy val jsonSerializerRegistry: JsonSerializerRegistry = UserSerializerRegistry
+  //Register the persistent entity
   persistentEntityRegistry.register(wire[InventoryEntity])
+//Register read side processor
+  readSide.register(wire[InventoryReadSideProcessor])
 
 }
