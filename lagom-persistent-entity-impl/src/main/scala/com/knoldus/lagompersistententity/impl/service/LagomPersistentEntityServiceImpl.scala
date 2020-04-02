@@ -9,7 +9,7 @@ import com.lightbend.lagom.scaladsl.persistence.cassandra.CassandraSession
 import com.lightbend.lagom.scaladsl.persistence.{PersistentEntityRef, PersistentEntityRegistry}
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 /**
@@ -38,17 +38,20 @@ class LagomPersistentEntityServiceImpl(persistentEntityRegistry: PersistentEntit
     }
   }
 
+  def getProductById(id: String): Future[Option[Product]] =
+    session.selectOne(s"SELECT * FROM $TABLE_NAME WHERE id = '$id'").map{rows =>
+      rows.map{row =>
+        val id = row.getString("id")
+        val name = row.getString("name")
+        val quantity = row.getLong("quantity")
+        Product(id, name, quantity )
+      }
+    }
+
+
   override def getProduct(id: String): ServiceCall[NotUsed, String] = {
     ServiceCall { _ =>
-      session.selectOne(s"SELECT * FROM $TABLE_NAME WHERE name = '$id'").map{rows =>
-        rows.map{row =>
-          val id = row.getString("id")
-          val name = row.getString("name")
-          val age = row.getLong("quantity")
-          Product(id, name, age)
-        }.map(product =>  s"Product named ${product.name} has id: $id and quantity in inventory: ${product.quantity}")
+     getProductById(id).map(product =>  s"Product named ${product.get.name} has id: $id and quantity in inventory: ${product.get.quantity}")
     }
   }
-
-}
 }
