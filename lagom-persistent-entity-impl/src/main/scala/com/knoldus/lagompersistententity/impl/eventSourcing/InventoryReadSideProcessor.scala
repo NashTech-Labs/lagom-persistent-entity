@@ -25,7 +25,7 @@ class InventoryReadSideProcessor(cassandraSession: CassandraSession, readSide: C
    */
   override def buildHandler(): ReadSideProcessor.ReadSideHandler[InventoryEvent] =
     readSide.builder[InventoryEvent]("inventoryOffset")
-      .setGlobalPrepare(createTable)
+      .setGlobalPrepare(() => createTable())
       .setPrepare(_ => prepareStatements())
       .setEventHandler[ProductAdded](ese => addEntity(ese.event.product))
       .build()
@@ -41,7 +41,7 @@ class InventoryReadSideProcessor(cassandraSession: CassandraSession, readSide: C
          |CREATE TABLE IF NOT EXISTS $TABLE_NAME(
          |id text PRIMARY KEY,
          |name text,
-         |age int
+         |quantity bigint
          |);
       """.stripMargin)
   }
@@ -53,11 +53,12 @@ class InventoryReadSideProcessor(cassandraSession: CassandraSession, readSide: C
    * @return Future[Done]
    */
   def prepareStatements(): Future[Done] =
-    cassandraSession.prepare(s"INSERT INTO $TABLE_NAME(id, name, age) VALUES (?, ?, ?)")
-      .map { ps =>
-        addEntity = ps
-        Done
-      }
+    for{
+     productPreparedStatement <- cassandraSession.prepare(s"INSERT INTO $TABLE_NAME(id, name, quantity) VALUES (?, ?, ?)")
+    } yield{
+      addEntity = productPreparedStatement
+      Done
+    }
 
   def addEntity(product: Product): Future[List[BoundStatement]] = {
     val bindInsertProduct: BoundStatement = addEntity.bind()
